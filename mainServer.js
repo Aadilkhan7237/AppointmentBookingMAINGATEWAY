@@ -32,23 +32,21 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 
-await axios.get(`${process.env.APPOINTMENT_URL}/health`);
-await axios.get(`${process.env.USER_URL}/health`);
-await axios.get(`${process.env.ADMIN_URL}/health`);
 
-setInterval(async () => {
-  try {
 
-    await axios.get(`${process.env.APPOINTMENT_URL}/health`);
-    await axios.get(`${process.env.USER_URL}/health`);
-    await axios.get(`${process.env.ADMIN_URL}/health`);
-    console.log("Health checks completed");
-  } catch (error) {
-    console.log("Health checks failed");
-    console.log(error.message);
-  }
+// setInterval(async () => {
+//   try {
 
-}, 60000);
+//     await axios.get(`${process.env.APPOINTMENT_URL}/health`);
+//     await axios.get(`${process.env.USER_URL}/health`);
+//     await axios.get(`${process.env.ADMIN_URL}/health`);
+//     console.log("Health checks completed");
+//   } catch (error) {
+//     console.log("Health checks failed");
+//     console.log(error.message);
+//   }
+
+// }, 60000);
 
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
@@ -111,6 +109,36 @@ app.use(
   })
 );
 
-app.listen(PORT, () => {
-  console.log(`Gateway is running on port ${PORT}`);
-});
+const wakeUpServices = async () => {
+  const services = [
+    process.env.APPOINTMENT_URL,
+    process.env.USER_URL,
+    process.env.ADMIN_URL,
+  ];
+
+  await Promise.allSettled(
+    services.map((service) =>
+      axios.get(`${service}/health`, {
+        timeout: 60000,
+      })
+    )
+  );
+
+  console.log("Wake-up requests sent");
+};
+
+const startServer = async () => {
+  try {
+    await wakeUpServices();
+    setInterval(wakeUpServices, 60000);
+  } catch (err) {
+    console.error("Wake-up error:", err.message);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`Gateway running on port ${PORT}`);
+  });
+};
+
+startServer();
+
