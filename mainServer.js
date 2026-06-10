@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import { createProxyMiddleware } from "http-proxy-middleware";
+import axios from "axios";
 
 dotenv.config();
 
@@ -29,6 +30,25 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+
+await axios.get(`${process.env.APPOINTMENT_URL}/health`);
+await axios.get(`${process.env.USER_URL}/health`);
+await axios.get(`${process.env.ADMIN_URL}/health`);
+
+setInterval(async () => {
+  try {
+
+    await axios.get(`${process.env.APPOINTMENT_URL}/health`);
+    await axios.get(`${process.env.USER_URL}/health`);
+    await axios.get(`${process.env.ADMIN_URL}/health`);
+    console.log("Health checks completed");
+  } catch (error) {
+    console.log("Health checks failed");
+    console.log(error.message);
+  }
+
+}, 60000);
 
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
