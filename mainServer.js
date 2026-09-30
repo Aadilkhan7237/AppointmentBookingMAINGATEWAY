@@ -71,6 +71,7 @@ const wakeUpServices = async () => {
       }
 
       try {
+        console.log(url);
         const response = await axios.get(`${url}/health`, {
           timeout: 60000,
         });
