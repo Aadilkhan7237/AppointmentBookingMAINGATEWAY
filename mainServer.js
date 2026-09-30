@@ -1,4 +1,3 @@
-
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -9,6 +8,10 @@ dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 const app = express();
+
+// ======================================================
+// Middleware
+// ======================================================
 
 // Log every request
 app.use((req, res, next) => {
@@ -34,12 +37,108 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Health check
+// ======================================================
+// Health Check
+// ======================================================
+
 app.get("/health", (req, res) => {
-  res.status(200).send("OK");
+  res.status(200).json({
+    status: "ok",
+    service: "API Gateway",
+    timestamp: new Date().toISOString(),
+  });
 });
 
+// ======================================================
+// Wake Up / Heartbeat Service
+// ======================================================
+
+const wakeUpServices = async () => {
+  const services = {
+    appointmentService: process.env.APPOINTMENT_URL,
+    userService: process.env.USER_URL,
+    adminService: process.env.ADMIN_URL,
+  };
+
+  const results = await Promise.allSettled(
+    Object.entries(services).map(async ([name, url]) => {
+      if (!url) {
+        return {
+          service: name,
+          status: "failed",
+          message: "Service URL is not configured",
+        };
+      }
+
+      try {
+        const response = await axios.get(`${url}/health`, {
+          timeout: 60000,
+        });
+
+        return {
+          service: name,
+          status: "ok",
+          statusCode: response.status,
+          message: "Heartbeat successful",
+        };
+      } catch (error) {
+        return {
+          service: name,
+          status: "failed",
+          statusCode: error.response?.status || null,
+          message: error.message,
+        };
+      }
+    })
+  );
+
+  return results.map((result) => {
+    if (result.status === "fulfilled") {
+      return result.value;
+    }
+
+    return {
+      service: "unknown",
+      status: "failed",
+      message: result.reason?.message || "Unknown error",
+    };
+  });
+};
+
+// Wake up all services endpoint
+app.get("/wakeup", async (req, res) => {
+  console.log("Sending heartbeat to all services...");
+
+  try {
+    const results = await wakeUpServices();
+
+    const hasFailure = results.some(
+      (service) => service.status === "failed"
+    );
+
+    res.status(hasFailure ? 503 : 200).json({
+      success: !hasFailure,
+      message: hasFailure
+        ? "Some services failed to respond"
+        : "All services are alive",
+      timestamp: new Date().toISOString(),
+      services: results,
+    });
+  } catch (error) {
+    console.error("Wake-up error:", error.message);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to send heartbeat requests",
+      error: error.message,
+    });
+  }
+});
+
+// ======================================================
 // Appointment Service
+// ======================================================
+
 app.use(
   "/api/v1/appointmentService",
   createProxyMiddleware({
@@ -58,7 +157,10 @@ app.use(
   })
 );
 
+// ======================================================
 // User Service
+// ======================================================
+
 app.use(
   "/api/v1/userService",
   createProxyMiddleware({
@@ -77,7 +179,10 @@ app.use(
   })
 );
 
+// ======================================================
 // Admin Service
+// ======================================================
+
 app.use(
   "/api/v1/adminService",
   createProxyMiddleware({
@@ -96,35 +201,11 @@ app.use(
   })
 );
 
-// Wake up all services
-// const wakeUpServices = async () => {
-//   const services = [
-//     process.env.APPOINTMENT_URL,
-//     process.env.USER_URL,
-//     process.env.ADMIN_URL,
-//   ];
+// ======================================================
+// Start Server
+// ======================================================
 
-//   await Promise.allSettled(
-//     services.map((service) =>
-//       axios.get(`${service}/health`, {
-//         timeout: 60000,
-//       })
-//     )
-//   );
-
-//   console.log("Wake-up requests sent");
-// };
-
-// Start server
-const startServer = async () => {
-  // try {
-  //   await wakeUpServices();
-
-  //   setInterval(wakeUpServices, 60000);
-  // } catch (err) {
-  //   console.error("Wake-up error:", err.message);
-  // }
-
+const startServer = () => {
   app.listen(PORT, () => {
     console.log(`Gateway running on port ${PORT}`);
   });
