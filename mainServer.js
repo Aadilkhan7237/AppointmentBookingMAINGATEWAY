@@ -97,33 +97,33 @@ app.use(
 );
 
 // Wake up all services
-const wakeUpServices = async () => {
-  const services = [
-    process.env.APPOINTMENT_URL,
-    process.env.USER_URL,
-    process.env.ADMIN_URL,
-  ];
+// const wakeUpServices = async () => {
+//   const services = [
+//     process.env.APPOINTMENT_URL,
+//     process.env.USER_URL,
+//     process.env.ADMIN_URL,
+//   ];
 
-  await Promise.allSettled(
-    services.map((service) =>
-      axios.get(`${service}/health`, {
-        timeout: 60000,
-      })
-    )
-  );
+//   await Promise.allSettled(
+//     services.map((service) =>
+//       axios.get(`${service}/health`, {
+//         timeout: 60000,
+//       })
+//     )
+//   );
 
-  console.log("Wake-up requests sent");
-};
+//   console.log("Wake-up requests sent");
+// };
 
 // Start server
 const startServer = async () => {
-  try {
-    await wakeUpServices();
+  // try {
+  //   await wakeUpServices();
 
-    setInterval(wakeUpServices, 60000);
-  } catch (err) {
-    console.error("Wake-up error:", err.message);
-  }
+  //   setInterval(wakeUpServices, 60000);
+  // } catch (err) {
+  //   console.error("Wake-up error:", err.message);
+  // }
 
   app.listen(PORT, () => {
     console.log(`Gateway running on port ${PORT}`);
