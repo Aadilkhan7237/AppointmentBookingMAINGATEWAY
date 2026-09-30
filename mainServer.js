@@ -1,4 +1,4 @@
-```javascript
+
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -116,4 +116,4 @@ app.listen(PORT, () => {
   console.log(`User Service: ${process.env.USER_URL}`);
   console.log(`Admin Service: ${process.env.ADMIN_URL}`);
 });
-```
+
